@@ -1,9 +1,7 @@
 package com.skillbox.redisdemo;
-
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Random;
-
 import static java.lang.System.out;
 
 public class RedisTest {
@@ -24,6 +22,8 @@ public class RedisTest {
     private static final int SLEEP = 1; // 1 миллисекунда
 
     private static final SimpleDateFormat DF = new SimpleDateFormat("HH:mm:ss");
+    private static final int MAX_SWIPERS_COUNT = 20;
+
 
     private static void log(int UsersOnline) {
         String log = String.format("[%s] Пользователей онлайн: %d", DF.format(new Date()), UsersOnline);
@@ -32,15 +32,26 @@ public class RedisTest {
 
     public static void main(String[] args) throws InterruptedException {
 
+
+
+    }
+
+    private static void onlineUsersCount(){
         RedisStorage redis = new RedisStorage();
         redis.init();
+        Random random = new Random();
         // Эмулируем 10 секунд работы сайта
         for(int seconds=0; seconds <= 10; seconds++) {
             // Выполним 500 запросов
             for(int request = 0; request <= RPS; request++) {
-                int user_id = new Random().nextInt(USERS);
+                int user_id = random.nextInt(USERS);
                 redis.logPageVisit(user_id);
-                Thread.sleep(SLEEP);
+                try{
+                    Thread.sleep(SLEEP);
+                } catch (InterruptedException e) {
+                    out.println("Что-то пошло не так " + e.getMessage());
+                    Thread.currentThread().interrupt();
+                }
             }
             redis.deleteOldEntries(DELETE_SECONDS_AGO);
             int usersOnline = redis.calculateUsersNumber();

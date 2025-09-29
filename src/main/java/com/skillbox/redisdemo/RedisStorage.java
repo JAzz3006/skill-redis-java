@@ -20,6 +20,8 @@ public class RedisStorage {
     // Объект для работы с Sorted Set'ом
     private RScoredSortedSet<String> onlineUsers;
     private final static String KEY = "ONLINE_USERS";
+    private RScoredSortedSet<String> registeredUsers;
+    private final static String KEY_1 = "REGISTERED_USERS";
 
 
 
@@ -47,6 +49,7 @@ public class RedisStorage {
         }
         rKeys = redisson.getKeys();
         onlineUsers = redisson.getScoredSortedSet(KEY);
+        registeredUsers = redisson.getScoredSortedSet(KEY_1);
         rKeys.delete(KEY);
     }
 
@@ -59,6 +62,12 @@ public class RedisStorage {
     {
         //ZADD ONLINE_USERS
         onlineUsers.add(getTs(), String.valueOf(user_id));
+    }
+
+    void logRegistration(int user_id)
+    {
+        //ZADD ONLINE_USERS
+        registeredUsers.add(getTs(), String.valueOf(user_id));
     }
 
     // Удаляет

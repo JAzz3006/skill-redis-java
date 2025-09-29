@@ -22,7 +22,7 @@ public class RedisTest {
     private static final int SLEEP = 1; // 1 миллисекунда
 
     private static final SimpleDateFormat DF = new SimpleDateFormat("HH:mm:ss");
-    private static final int MAX_SWIPERS_COUNT = 20;
+    private static final int MAX_REGS_COUNT = 20;
 
 
     private static void log(int UsersOnline) {
@@ -31,6 +31,20 @@ public class RedisTest {
     }
 
     public static void main(String[] args) throws InterruptedException {
+        RedisStorage redis = new RedisStorage();
+        redis.init();
+        //эмулируем регистрацию заданного количества случайных пользователей
+        for (int i = 0; i < MAX_REGS_COUNT; ++i){
+            redis.logRegistration(i);
+            try{
+                Thread.sleep(SLEEP);
+            } catch (InterruptedException e) {
+                out.println("Что-то пошло не так " + e.getMessage());
+                Thread.currentThread().interrupt();
+            }
+
+
+        }
 
 
 

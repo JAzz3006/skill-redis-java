@@ -1,19 +1,15 @@
 package com.skillbox.redisdemo;
 
-import java.util.Date;
+import java.util.Random;
 
 public class Test {
     public static void main(String[] args) {
-//        for (int i = 0; i < 10; ++i){
-//            System.out.println(new Date().getTime());
-//            try{
-//                Thread.sleep(1);
-//            } catch (InterruptedException e) {
-//                System.out.println("Поток прерван");
-//                Thread.currentThread().interrupt();
-//            }
-//
-//        }
+
+        Random random = new Random();
+
+        for (int i = 0; i < 20; i++){
+            System.out.println(random.nextInt(10));
+        }
 
     }
 }

@@ -26,7 +26,7 @@ public class RedisStorage {
 
 
     private double getTs() {
-        return new Date().getTime() / 1000;
+        return new Date().getTime();
     }
 
     // Пример вывода всех ключей
@@ -39,7 +39,7 @@ public class RedisStorage {
 
     void init() {
         Config config = new Config();
-        config.setCodec(new org.redisson.codec.JsonJacksonCodec()); // вместо FST
+        config.setCodec(new org.redisson.client.codec.StringCodec()); // вместо FST
         config.useSingleServer().setAddress("redis://127.0.0.1:6379");
         try {
             redisson = Redisson.create(config);
@@ -50,6 +50,7 @@ public class RedisStorage {
         rKeys = redisson.getKeys();
         onlineUsers = redisson.getScoredSortedSet(KEY);
         registeredUsers = redisson.getScoredSortedSet(KEY_1);
+        registeredUsers.clear();
         rKeys.delete(KEY);
     }
 
@@ -66,8 +67,8 @@ public class RedisStorage {
 
     void logRegistration(int user_id)
     {
-        //ZADD ONLINE_USERS
-        registeredUsers.add(getTs(), String.valueOf(user_id));
+        //ZADD REGISTERED_USERS
+        registeredUsers.add(getTs(), String.join("-","user",String.valueOf(user_id)));
     }
 
     // Удаляет
@@ -83,4 +84,13 @@ public class RedisStorage {
         //ZCOUNT ONLINE_USERS
         return onlineUsers.count(Double.NEGATIVE_INFINITY, true, Double.POSITIVE_INFINITY, true);
     }
+    int calculateRegisteredUsersNumber()
+    {
+        //ZCOUNT REGISTERED_USERS
+        return registeredUsers.count(Double.NEGATIVE_INFINITY, true, Double.POSITIVE_INFINITY, true);
+    }
+    RScoredSortedSet<String> getRegisteredUsers(){
+        return registeredUsers;
+    }
+
 }

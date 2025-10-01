@@ -8,9 +8,6 @@ import static java.lang.System.out;
 
 public class RedisTest {
 
-    // Запуск докер-контейнера:
-    // docker run --rm --name skill-redis -p 127.0.0.1:6379:6379/tcp -d redis
-
     // Для теста будем считать неактивными пользователей, которые не заходили 2 секунды
     private static final int DELETE_SECONDS_AGO = 2;
 
@@ -21,22 +18,76 @@ public class RedisTest {
     private static final int USERS = 1000;
 
     // Также мы добавим задержку между посещениями
-    private static final int SLEEP = 50; // 1 миллисекунда
+    private static final int SLEEP = 50; // 50 миллисекунд
 
     private static final SimpleDateFormat DF = new SimpleDateFormat("HH:mm:ss");
     private static final int MAX_REGS_COUNT = 20;
     private static volatile boolean running = true;
     private static final int PURCHASE_FREQ = 10;
 
-    private static void log(int UsersOnline) {
-        String log = String.format("[%s] Пользователей онлайн: %d", DF.format(new Date()), UsersOnline);
-        out.println(log);
-    }
-
     public static void main(String[] args) throws InterruptedException {
         RedisStorage redis = new RedisStorage();
         redis.init();
-        //эмулируем регистрацию заданного количества случайных пользователей
+        emulateUsersReg(redis);
+        exitProvider();
+
+        Random random = new Random();
+        int registeredUsersCount = redis.getRegisteredUsers().count(Double.NEGATIVE_INFINITY, true, Double.POSITIVE_INFINITY, true);
+        int whenBuy = 0;
+        int whoBuy = 0;
+
+        while (running) {
+            for (int i = 0; i < registeredUsersCount; i++){
+                if (!running) break;
+                if (i % PURCHASE_FREQ == 0){
+                    whenBuy = i + random.nextInt(PURCHASE_FREQ);
+                    whoBuy = random.nextInt(registeredUsersCount);
+                }
+                if (i == whenBuy){
+                    purchase(redis, whenBuy, whoBuy);
+                }
+                String current = redis.getRegisteredUsers().valueRange(i,i).iterator().next();
+                out.printf("Показываем пользователя %S\n", current);
+                pause(500);
+            }
+        }
+        System.out.println("Остановлено!");
+        redis.shutdown();
+        System.exit(0);
+    }
+
+    public static void pause(int millis){
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            out.println("Поток прерван");
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    public static void purchase (RedisStorage redis, int whenBuy, int whoBuy){
+        String buyer = redis.getRegisteredUsers().valueRange(whoBuy,whoBuy).iterator().next();
+        String waiter = redis.getRegisteredUsers().valueRange(whenBuy,whenBuy).iterator().next();
+        double waiterScore = redis.getRegisteredUsers().getScore(waiter);
+        redis.getRegisteredUsers().add(waiterScore - 1, buyer);
+        out.printf(">Пользователь %s оплатил внеочередной показ\n", buyer);
+        if (whoBuy < whenBuy){
+            out.printf("Показываем пользователя %S\n", buyer);
+        }
+    }
+
+    public static void exitProvider(){
+        out.println("Для выходя из программы нажмите Enter");
+        Thread inputThread = new Thread(() -> {
+            try (Scanner sc = new Scanner(System.in)) {
+                sc.nextLine();
+                running = false;
+            } catch (Exception ignored) {}
+        });
+        inputThread.start();
+    }
+
+    public static void emulateUsersReg(RedisStorage redis){
         for (int i = 0; i < MAX_REGS_COUNT; ++i){
             redis.logRegistration(i + 1);
             try{
@@ -49,74 +100,9 @@ public class RedisTest {
         if (redis.calculateRegisteredUsersNumber() == 20){
             out.printf("Создана база данных в количестве %d пользователей\n", redis.calculateRegisteredUsersNumber());
         }else out.printf("Что-то пошло не так, создана база из %d пользователей\n", redis.calculateRegisteredUsersNumber());
-
-        //запускаем доп. поток, прерывающий цикл while
-        Thread inputThread = new Thread(() -> {
-            try (Scanner sc = new Scanner(System.in)) {
-                sc.nextLine();
-                running = false;
-            } catch (Exception ignored) {}
-        });
-        inputThread.start();
-
-        //механизм случайного выбора
-        Random random = new Random();
-
-
-        //запуск цикла показов
-        out.println("Для выходя из программы нажмите Enter");
-        while (running) {
-            int whoBuy = 0;
-            int whenBuy = 0;
-
-            for (int i = 0;
-                 i < redis.getRegisteredUsers().count(Double.NEGATIVE_INFINITY, true, Double.POSITIVE_INFINITY, true);
-                 i++){
-                if (!running) break;
-                if (i % PURCHASE_FREQ == 0){
-                    whoBuy = i + random.nextInt(PURCHASE_FREQ);
-                    whenBuy = i + random.nextInt(PURCHASE_FREQ);
-                }
-                if (i == whenBuy){
-
-                    out.printf("Gjrfpsdftv ", );
-                }
-                String current = redis.getRegisteredUsers().valueRange(i,i).iterator().next();
-                out.printf("Показываем пользователя %S\n", current);
-
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    out.println("Поток прерван");
-                    Thread.currentThread().interrupt();
-                }
-
-            }
-
-//            for (String s : redis.getRegisteredUsers()){
-//                if (!running) break;
-//                luckyOne = random.nextInt(PURCHASE_FREQ);
-//                if (purchase == luckyOne){
-//                    out.println("покупка!");
-//                }
-//                purchase++;
-//
-//                out.printf("Показываем пользователя %s\n", s);
-//                try {
-//                    Thread.sleep(500);
-//                } catch (InterruptedException e) {
-//                    out.println("Поток прерван");
-//                    Thread.currentThread().interrupt();
-//                }
-//                if (purchase == PURCHASE_FREQ){
-//
-//                }
-//            }
-        }
-        System.out.println("Остановлено!");
-        System.exit(0);
     }
 
+    //предыдущую логику сохраняю
     private static void onlineUsersCount(){
         RedisStorage redis = new RedisStorage();
         redis.init();
@@ -139,5 +125,11 @@ public class RedisTest {
             log(usersOnline);
         }
         redis.shutdown();
+    }
+
+    //предыдущую логику сохраняю
+    private static void log(int UsersOnline) {
+        String log = String.format("[%s] Пользователей онлайн: %d", DF.format(new Date()), UsersOnline);
+        out.println(log);
     }
 }

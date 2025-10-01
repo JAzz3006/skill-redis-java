@@ -1,5 +1,4 @@
 package com.skillbox.redisdemo;
-
 import org.redisson.Redisson;
 import org.redisson.api.RKeys;
 import org.redisson.api.RScoredSortedSet;
@@ -11,30 +10,15 @@ import static java.lang.System.out;
 
 public class RedisStorage {
 
-    // Объект для работы с Redis
     private RedissonClient redisson;
-
-    // Объект для работы с ключами
     private RKeys rKeys;
-
-    // Объект для работы с Sorted Set'ом
     private RScoredSortedSet<String> onlineUsers;
     private final static String KEY = "ONLINE_USERS";
     private RScoredSortedSet<String> registeredUsers;
     private final static String KEY_1 = "REGISTERED_USERS";
 
-
-
     private double getTs() {
         return new Date().getTime();
-    }
-
-    // Пример вывода всех ключей
-    public void listKeys() {
-        Iterable<String> keys = rKeys.getKeys();
-        for(String key: keys) {
-            out.println("KEY: " + key + ", type:" + rKeys.getType(key));
-        }
     }
 
     void init() {
@@ -58,39 +42,49 @@ public class RedisStorage {
         redisson.shutdown();
     }
 
-    // Фиксирует посещение пользователем страницы
+    void logRegistration(int user_id)
+    {
+        registeredUsers.add(getTs(), String.join("-","user",String.valueOf(user_id)));
+    }
+
+    int calculateRegisteredUsersNumber()
+    {
+        return registeredUsers.count(Double.NEGATIVE_INFINITY, true, Double.POSITIVE_INFINITY, true);
+    }
+
+    RScoredSortedSet<String> getRegisteredUsers(){
+        return registeredUsers;
+    }
+
+
+
+    // Пример вывода всех ключей - старая логика
+    public void listKeys() {
+        Iterable<String> keys = rKeys.getKeys();
+        for(String key: keys) {
+            out.println("KEY: " + key + ", type:" + rKeys.getType(key));
+        }
+    }
+
+    // Фиксирует посещение пользователем страницы - старая логика
     void logPageVisit(int user_id)
     {
         //ZADD ONLINE_USERS
         onlineUsers.add(getTs(), String.valueOf(user_id));
     }
 
-    void logRegistration(int user_id)
-    {
-        //ZADD REGISTERED_USERS
-        registeredUsers.add(getTs(), String.join("-","user",String.valueOf(user_id)));
-    }
-
-    // Удаляет
+    // Удаляет - старая логика
     void deleteOldEntries(int secondsAgo)
     {
         //ZREVRANGEBYSCORE ONLINE_USERS 0 <time_5_seconds_ago>
         onlineUsers.removeRangeByScore(0, true, getTs() - secondsAgo, true);
-
-
     }
+
+    // Считает - старая логика
     int calculateUsersNumber()
     {
         //ZCOUNT ONLINE_USERS
         return onlineUsers.count(Double.NEGATIVE_INFINITY, true, Double.POSITIVE_INFINITY, true);
-    }
-    int calculateRegisteredUsersNumber()
-    {
-        //ZCOUNT REGISTERED_USERS
-        return registeredUsers.count(Double.NEGATIVE_INFINITY, true, Double.POSITIVE_INFINITY, true);
-    }
-    RScoredSortedSet<String> getRegisteredUsers(){
-        return registeredUsers;
     }
 
 }
